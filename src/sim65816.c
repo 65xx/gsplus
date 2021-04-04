@@ -307,8 +307,8 @@ void sim65816_initglobals() {
   Verbose = 0;
   Halt_on = 0;
 
-  g_mem_size_base = 256*1024;   /* size of motherboard memory */
-  g_mem_size_exp = 8*1024*1024; /* size of expansion RAM card */
+  g_mem_size_base = 256*1024;   /* size of motherboard memory: 256k */
+  g_mem_size_exp = 8*1024*1024; /* size of expansion RAM card: 8MB*/
   g_mem_size_total = 256*1024;  /* Total contiguous RAM from 0 */
 }
 
@@ -720,9 +720,9 @@ byte * memalloc_align(int size, int skip_amt, void **alloc_ptr) {
   byte    *bptr;
   word32 addr;
   word32 offset;
-
   skip_amt = MAX(256, skip_amt);
   bptr = (byte*)calloc(size + skip_amt + 256, 1);       // OG Added cast
+
   if(alloc_ptr) {
     /* Save allocation address */
     *alloc_ptr = bptr;
@@ -734,8 +734,27 @@ byte * memalloc_align(int size, int skip_amt, void **alloc_ptr) {
   /* this code should work even if ptrs are > 32 bits */
 
   offset = ((addr + skip_amt - 1) & (~0xff)) - addr;
-
+glogf("allocated %X bytes at %X, [skip=%d] offset %X )", size, bptr, skip_amt, offset);
   return (bptr + offset);
+}
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
+byte * memalloc_shared(int size, void **alloc_ptr) {
+  byte    *bptr;
+  word32 addr;
+  int fd = open("RAM.bin",O_RDWR|O_CREAT,0777);
+  lseek(fd, size-1, SEEK_SET);
+  int unused = write(fd,"",1);
+  bptr = (byte*)mmap((void*)0x100000000L, (size_t)size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FIXED,fd,0);
+glogf("mapped %X bytes at %LX backed by fd %d ('RAM.bin')", size, bptr,fd);
+  close(fd);
+  if(alloc_ptr) { 
+    *alloc_ptr = bptr;
+  }
+//  addr = PTR2WORD(bptr);
+  return (bptr);
 }
 
 void memory_ptr_init() {
@@ -754,7 +773,7 @@ void memory_ptr_init() {
           g_memory_alloc_ptr = 0;
      }
    */
-  g_memory_ptr = memalloc_align(mem_size, 256, &g_memory_alloc_ptr);
+  g_memory_ptr = memalloc_shared(mem_size, &g_memory_alloc_ptr);
 
   glogf("RAM size is %d bytes (%.2fMB)", mem_size, (double)mem_size/(1024.0*1024.0));
 }
@@ -763,6 +782,7 @@ void memory_ptr_init() {
 void memory_ptr_shut() {
   if(g_memory_alloc_ptr)
   {
+//TODO: fix memory deallocation:   munmap(g_memory_alloc_ptr,size);
     free(g_memory_alloc_ptr);
     g_memory_alloc_ptr = 0;
   }
