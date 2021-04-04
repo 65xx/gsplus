@@ -1,4 +1,5 @@
-# GS+ 
+# GS+, modded to provide access to emulated memory
+stacksmith: Memory is available as an 8.25MB shared block at $100000000.  It is also backed by a file 'RAM.bin' stored in the current (startup) directory.  Added benefit: upon crash, RAM.bin is a memory dump.
 
 An Apple IIgs emulator based on KEGS
 
