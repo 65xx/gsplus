@@ -747,7 +747,8 @@ byte * memalloc_shared(int size, void **alloc_ptr) {
   int fd = open("RAM.bin",O_RDWR|O_CREAT,0777);
   lseek(fd, size-1, SEEK_SET);
   int unused = write(fd,"",1);
-  bptr = (byte*)mmap((void*)0x100000000L, (size_t)size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FIXED,fd,0);
+ 
+  bptr = (byte*)mmap((void*)0x70000000L, (size_t)size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FIXED,fd,0);
 glogf("mapped %X bytes at %LX backed by fd %d ('RAM.bin')", size, bptr,fd);
   close(fd);
   if(alloc_ptr) { 
